@@ -71,7 +71,7 @@ fn is_pe(file: &str) -> io::Result<bool> {
 
 fn usage() {
     println!(
-        "Usage: {} <source signature file (.exe)> <destination file (.exe)>",
+        "Usage: {} <source signature file (.exe)> <destination file (.exe)> [--pull <output certificate file>] [--sew <input certificate file>]",
         env::args().next().unwrap()
     );
 }
@@ -79,7 +79,7 @@ fn usage() {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 3 {
+    if args.len() < 3 {
         usage();
         process::exit(1);
     }
@@ -92,32 +92,73 @@ fn main() {
         process::exit(1);
     }
 
-    let signed_buf = match fs::read(source_file) {
-        Ok(buf) => buf,
-        Err(e) => {
-            eprintln!("Error reading source signature file: {}", e);
+    let mut output_certificate: Option<PathBuf> = None;
+    let mut input_certificate: Option<PathBuf> = None;
+
+    if args.len() == 5 {
+        match args[3].as_str() {
+            "--pull" => output_certificate = Some(PathBuf::from(&args[4])),
+            "--sew" => input_certificate = Some(PathBuf::from(&args[4])),
+            _ => {
+                println!("Invalid option: {}", args[3]);
+                usage();
+                process::exit(1);
+            }
+        }
+    } else if args.len() > 5 {
+        println!("Invalid number of arguments.");
+        usage();
+        process::exit(1);
+    }
+
+    if let Some(output_cert_file) = output_certificate {
+        let signed_buf = match fs::read(source_file) {
+            Ok(buf) => buf,
+            Err(e) => {
+                eprintln!("Error reading source signature file: {}", e);
+                process::exit(1);
+            }
+        };
+
+        let sig_data = match extract_signature(&signed_buf) {
+            Some(data) => data,
+            None => {
+                println!("Input file does not contain an Authenticode signature");
+                process::exit(1);
+            }
+        };
+
+        match fs::write(&output_cert_file, sig_data) {
+            Ok(_) => println!("Signature extracted to {}", output_cert_file.to_string_lossy()),
+            Err(e) => {
+                eprintln!("Error writing signature to {}: {}", output_cert_file.to_string_lossy(), e);
+                process::exit(1);
+            }
+        }
+    } else if let Some(input_cert_file) = input_certificate {
+        let signature = match fs::read(&input_cert_file) {
+            Ok(sig) => sig,
+            Err(e) => {
+                eprintln!("Error reading input certificate file {}: {}", input_cert_file.to_string_lossy(), e);
+                process::exit(1);
+            }
+        };
+
+        let unsigned_buf = match fs::read(destination_file) {
+            Ok(buf) => buf,
+            Err(e) => {
+                eprintln!("Error reading destination file: {}", e);
+                process::exit(1);
+            }
+        };
+
+        if let Err(e) = implant_signature(&unsigned_buf, &signature, Path::new(destination_file)) {
+            eprintln!("Error: {}", e);
             process::exit(1);
         }
-    };
-
-    let sig_data = match extract_signature(&signed_buf) {
-        Some(data) => data,
-        None => {
-            println!("Input file does not contain an Authenticode signature");
-            process::exit(1);
-        }
-    };
-
-    let unsigned_buf = match fs::read(destination_file) {
-        Ok(buf) => buf,
-        Err(e) => {
-            eprintln!("Error reading destination file: {}", e);
-            process::exit(1);
-        }
-    };
-
-    if let Err(e) = implant_signature(&unsigned_buf, sig_data, Path::new(destination_file)) {
-        eprintln!("Error: {}", e);
+    } else {
+        println!("Invalid arguments.");
+        usage();
         process::exit(1);
     }
 }
