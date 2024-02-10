@@ -71,7 +71,7 @@ fn is_pe(file: &str) -> io::Result<bool> {
 
 fn usage() {
     println!(
-        "Usage: {} <source signature file (.exe)> <destination file (.exe)> [--pull <output certificate file>] [--sew <input certificate file>]",
+        "Usage: {} <source signature file (.exe)> [--pull <output certificate file (.crt)>] [--sew <input certificate file (.crt)>]",
         env::args().next().unwrap()
     );
 }
@@ -85,7 +85,6 @@ fn main() {
     }
 
     let source_file = &args[1];
-    let destination_file = &args[2];
 
     if !is_pe(source_file).unwrap_or(false) {
         println!("Source file is not a PE executable.");
@@ -95,20 +94,34 @@ fn main() {
     let mut output_certificate: Option<PathBuf> = None;
     let mut input_certificate: Option<PathBuf> = None;
 
-    if args.len() == 5 {
-        match args[3].as_str() {
-            "--pull" => output_certificate = Some(PathBuf::from(&args[4])),
-            "--sew" => input_certificate = Some(PathBuf::from(&args[4])),
+    let mut arg_index = 2;
+
+    while arg_index < args.len() {
+        match args[arg_index].as_str() {
+            "--pull" => {
+                if arg_index + 1 >= args.len() {
+                    println!("Missing output certificate file argument for --pull option.");
+                    usage();
+                    process::exit(1);
+                }
+                output_certificate = Some(PathBuf::from(&args[arg_index + 1]));
+                arg_index += 2;
+            }
+            "--sew" => {
+                if arg_index + 1 >= args.len() {
+                    println!("Missing input certificate file argument for --sew option.");
+                    usage();
+                    process::exit(1);
+                }
+                input_certificate = Some(PathBuf::from(&args[arg_index + 1]));
+                arg_index += 2;
+            }
             _ => {
-                println!("Invalid option: {}", args[3]);
+                println!("Invalid option: {}", args[arg_index]);
                 usage();
                 process::exit(1);
             }
         }
-    } else if args.len() > 5 {
-        println!("Invalid number of arguments.");
-        usage();
-        process::exit(1);
     }
 
     if let Some(output_cert_file) = output_certificate {
@@ -144,15 +157,10 @@ fn main() {
             }
         };
 
-        let unsigned_buf = match fs::read(destination_file) {
-            Ok(buf) => buf,
-            Err(e) => {
-                eprintln!("Error reading destination file: {}", e);
-                process::exit(1);
-            }
-        };
-
-        if let Err(e) = implant_signature(&unsigned_buf, &signature, Path::new(destination_file)) {
+        if let Err(e) = implant_signature(&fs::read(source_file).unwrap_or_else(|e| {
+            eprintln!("Error reading source file {}: {}", source_file, e);
+            process::exit(1);
+        }), &signature, Path::new(source_file)) {
             eprintln!("Error: {}", e);
             process::exit(1);
         }
