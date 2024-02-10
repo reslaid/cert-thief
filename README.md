@@ -1,8 +1,21 @@
-# Certificate thief ![Version](https://img.shields.io/badge/Version-0.2.1-blue.svg) ![Language](https://img.shields.io/badge/Language-Rust-red.svg)
-This program allows you to transfer an application certificate to another executable application.
+> # </[Cert-Thief](https://github.com/reslaid/xargs.git)> [![Version](https://img.shields.io/badge/Version-0.2.1-red.svg)](https://github.com/reslaid/xargs.git) [![language](https://skillicons.dev/icons?i=rust)](https://github.com/reslaid/xargs.git)
+- > **This program allows you to transfer an application certificate to another executable application.**
 
 # Usage
-## Embedding a digital signature
+## Embedding
+**Embedding a digital signature from another PE structure file**
 ```bash
-thief.exe <src-file> <target-file>
+thief.exe <source> <target>
+```
+
+## Extracting
+**Extract a certificate from any file with a PE structure into .crt**
+```bash
+thief.exe <source> --pull <cert>
+```
+
+## Placing
+**Place the certificate from .crt in any PE structure file**
+```bash
+thief.exe <target> --sew <cert>
 ```
