@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_windows_debug:
+  Debug:
 
     runs-on: windows-latest
 
@@ -34,33 +34,8 @@ jobs:
       with:
         name: target-debug
         path: target/
-
-  build_linux_debug:
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-
-    - name: Build Debug
-      run: cargo build --verbose
-
-    - name: Run tests
-      run: cargo test --verbose
-
-    - name: Archive artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: target-debug
-        path: target/
-
-  build_windows_release:
+        
+  Release:
 
     runs-on: windows-latest
 
@@ -84,26 +59,6 @@ jobs:
       with:
         name: target-release
         path: target/release/
-
-  build_linux_release:
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-
-    - name: Build Release
-      run: cargo build --release --verbose
-
-    - name: Run tests
-      run: cargo test --verbose
-
     - name: Archive artifacts
       uses: actions/upload-artifact@v2
       with:
