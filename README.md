@@ -5,7 +5,7 @@
 ## Embedding
 **Embedding a digital signature from another PE structure file**
 ```bash
-thief.exe <source> <target>
+thief.exe <source> --impl <target>
 ```
 
 ## Extracting
