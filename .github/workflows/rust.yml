@@ -29,5 +29,8 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
-    - name: Move artifacts
-      run: mv target $GITHUB_WORKSPACE/target
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: target
+        path: target/
