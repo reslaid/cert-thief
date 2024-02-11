@@ -51,6 +51,34 @@ fn implant_signature(buf: &[u8], sig: &[u8], outfile: &Path) -> io::Result<()> {
     }
 }
 
+fn delete_signature(buf: &[u8], outfile: &Path) -> io::Result<()> {
+    let pe = PE::parse(buf).map_err(io_error)?;
+
+    if let Some(optional_header) = pe.header.optional_header {
+        if let Some(_load_config_hdr) = optional_header.data_directories.get_load_config_table() {
+            let mut modified = buf.to_vec();
+            let pe_sig_offset = modified.pread::<u32>(0x3c).map_err(io_error)?;
+            let cert_table_offset = pe_sig_offset + if pe.is_64 { 0xa8 } else { 0x98 };
+
+            modified[cert_table_offset as usize..cert_table_offset as usize + 4]
+                .copy_from_slice(&(0 as u32).to_le_bytes());
+
+            modified[cert_table_offset as usize + 4..cert_table_offset as usize + 8]
+                .copy_from_slice(&(0 as u32).to_le_bytes());
+
+            let mut write_buf = File::create(outfile).map_err(io_error)?;
+            write_buf.write_all(&modified).map_err(io_error)?;
+
+            println!("Signature removed successfully.");
+            Ok(())
+        } else {
+            Err(io_error("Failed to get load config table"))
+        }
+    } else {
+        Err(io_error("Failed to parse PE file"))
+    }
+}
+
 fn io_error<E>(err: E) -> io::Error
 where
     E: Into<Box<dyn std::error::Error + Send + Sync>>,
@@ -71,7 +99,7 @@ fn is_pe(file: &str) -> io::Result<bool> {
 
 fn usage() {
     println!(
-        "Usage: {} <source signature file (.exe)> [--pull <output certificate file (.crt)>] [--sew <input certificate file (.crt)>]",
+        "Usage: {} <source signature file (.exe/.dll)> [--pull <output certificate file (.crt)>] [--sew <input certificate file (.crt)>] [--delete] [--replace <target PE file (.exe/.dll)>] [--impl <target PE file> (.exe/.dll)]",
         env::args().next().unwrap()
     );
 }
@@ -85,19 +113,32 @@ fn main() {
     }
 
     let source_file = &args[1];
-
+    
     if !is_pe(source_file).unwrap_or(false) {
         println!("Source file is not a PE executable.");
         process::exit(1);
     }
-
+    
     let mut output_certificate: Option<PathBuf> = None;
     let mut input_certificate: Option<PathBuf> = None;
+    let mut destination_file: Option<PathBuf> = None;
+    let mut should_delete: bool = false;
+    let mut destination_mode: bool = false;
 
     let mut arg_index = 2;
 
     while arg_index < args.len() {
         match args[arg_index].as_str() {
+            "--impl" => {
+                if arg_index + 1 >= args.len() {
+                    println!("Missing output destination file argument for --impl option.");
+                    usage();
+                    process::exit(1);
+                }
+                destination_file = Some(PathBuf::from(&args[arg_index + 1]));
+                destination_mode = true;
+                arg_index += 2;
+            }
             "--pull" => {
                 if arg_index + 1 >= args.len() {
                     println!("Missing output certificate file argument for --pull option.");
@@ -116,6 +157,10 @@ fn main() {
                 input_certificate = Some(PathBuf::from(&args[arg_index + 1]));
                 arg_index += 2;
             }
+            "--delete" => {
+                should_delete = true;
+                arg_index += 1;
+            }
             _ => {
                 println!("Invalid option: {}", args[arg_index]);
                 usage();
@@ -124,7 +169,47 @@ fn main() {
         }
     }
 
-    if let Some(output_cert_file) = output_certificate {
+    if should_delete {
+        if let Err(e) = delete_signature(&fs::read(source_file).unwrap_or_else(|e| {
+            eprintln!("Error reading source file {}: {}", source_file, e);
+            process::exit(1);
+        }), Path::new(source_file)) {
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
+    } else if destination_mode {
+        let destination_out_file = destination_file.unwrap();
+
+        let signed_buf = match fs::read(source_file) {
+            Ok(buf) => buf,
+            Err(e) => {
+                eprintln!("Error reading source signature file: {}", e);
+                process::exit(1);
+            }
+        };
+    
+        let sig_data = match extract_signature(&signed_buf) {
+            Some(data) => data,
+            None => {
+                println!("Input file does not contain an Authenticode signature");
+                process::exit(1);
+            }
+        };
+    
+        let unsigned_buf = match fs::read(&destination_out_file) {
+            Ok(buf) => buf,
+            Err(e) => {
+                eprintln!("Error reading destination file: {}", e);
+                process::exit(1);
+            }
+        };
+        
+        if let Err(e) = implant_signature(&unsigned_buf, sig_data, Path::new(&destination_out_file)) {
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
+
+    } else if let Some(output_cert_file) = output_certificate {
         let signed_buf = match fs::read(source_file) {
             Ok(buf) => buf,
             Err(e) => {
