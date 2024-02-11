@@ -1,6 +1,6 @@
 [package]
-name = "cert-thief"
-version = "0.2.1"
+name = "thief"
+version = "0.2.2"
 edition = "2021"
 
 [dependencies]
