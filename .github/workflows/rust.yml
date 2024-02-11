@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build_windows_debug:
 
     runs-on: windows-latest
 
@@ -23,7 +23,7 @@ jobs:
       with:
         toolchain: stable
 
-    - name: Build
+    - name: Build Debug
       run: cargo build --verbose
 
     - name: Run tests
@@ -32,5 +32,80 @@ jobs:
     - name: Archive artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: target
+        name: target-debug
         path: target/
+
+  build_linux_debug:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Build Debug
+      run: cargo build --verbose
+
+    - name: Run tests
+      run: cargo test --verbose
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: target-debug
+        path: target/
+
+  build_windows_release:
+
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Build Release
+      run: cargo build --release --verbose
+
+    - name: Run tests
+      run: cargo test --verbose
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: target-release
+        path: target/release/
+
+  build_linux_release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Build Release
+      run: cargo build --release --verbose
+
+    - name: Run tests
+      run: cargo test --verbose
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: target-release
+        path: target/release/
