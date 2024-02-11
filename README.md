@@ -1,4 +1,4 @@
-> # </[Cert-Thief](https://github.com/reslaid/xargs.git)> [![Version](https://img.shields.io/badge/Version-0.2.2-red.svg)](https://github.com/reslaid/xargs.git) [![language](https://skillicons.dev/icons?i=rust)](https://github.com/reslaid/xargs.git)
+> # </[Cert-Thief](https://github.com/reslaid/xargs.git)> [![Version](https://img.shields.io/badge/Version-0.2.1-red.svg)](https://github.com/reslaid/xargs.git) [![language](https://skillicons.dev/icons?i=rust)](https://github.com/reslaid/xargs.git)
 - > **This program allows you to transfer an application certificate to another executable application.**
 
 # Usage
@@ -18,4 +18,10 @@ thief.exe <source> --pull <cert>
 **Place the certificate from .crt in any PE structure file**
 ```bash
 thief.exe <target> --sew <cert>
+```
+
+## Removing
+**Remove certificate from PE structure file**
+```bash
+thief.exe <target> --delete
 ```
