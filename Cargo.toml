@@ -1,8 +1,9 @@
 [package]
 name = "thief"
-version = "0.2.2"
+version = "0.2.2.1"
 edition = "2021"
 
 [dependencies]
 goblin = "0.7.1"
 scroll = "0.12.0"
+clap = "3.0.0"
